@@ -1,0 +1,47 @@
+﻿@if (article is not null)
+{
+    <h1>@article.Title</h1>
+    <p>Section : @article.Section?.Name</p>
+    <p>Subsection : @article.Subsection?.Name</p>
+    <p>Abstract : @article.Abstract</p>
+    <p>Url : @article.Url</p>
+    <p>Uri : @article.Uri</p>
+    <p>Byline : @article.Byline</p>
+    <p>ItemType : @article.ItemType</p>
+    <p>UpdatedDate : @article.UpdatedDate</p>
+    <p>CreatedDate : @article.CreatedDate</p>
+    <p>PublishedDate : @article.PublishedDate</p>
+    <p>MaterialTypeFacet : @article.MaterialTypeFacet</p>
+    <p>Kicker : @article.Kicker</p>
+    <p>ShortUrl : @article.ShortUrl</p>
+
+    @if (article.Multimedia.Any())
+    {
+        @foreach (var item in article.Multimedia)
+        {
+            <p><img src="@item.Url" width="@item.ImageFormat.Width" height="@item.ImageFormat.Height" alt="@item.Caption" /></p>
+        }
+    }
+
+    @if (article.ArticleFacet.Any())
+    {
+        @foreach (var item in article.ArticleFacet.DistinctBy(c => c.FacetType).ToArray())
+        {
+            <p>
+                @item.FacetType :
+                @foreach (var facetDto in article.ArticleFacet.Where(c => c.FacetType == item.FacetType))
+                {
+                    @($"{facetDto.Facet?.Name} ,")
+               }
+            </p>
+        }
+    }
+
+    <p>ItemType : @article.ItemType</p>
+}
+
+
+@code {
+    [Parameter]
+    public ArticleDto article { get; set; }
+}

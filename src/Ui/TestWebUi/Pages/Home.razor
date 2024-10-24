@@ -1,0 +1,166 @@
+﻿@page "/"
+
+
+
+
+<PageTitle>Home</PageTitle>
+
+@if (IsProcessing)
+{
+    <div class="alert alert-dismissible alert-success">
+        <p>Processing @DisplayMessage Please Wait</p>
+    </div>
+
+}
+
+<EditForm Model="KeyModel" OnValidSubmit="SaveInitialData">
+    <DataAnnotationsValidator />
+    <div class="row p-0 mx-0 mt-4">
+        <label for="txtKey" class="col-sm-2 col-form-label">Key</label>
+        <div class="col-sm-8">
+            <InputText @bind-Value="KeyModel.Key" class="form-control"></InputText>
+            <small id="keyHelp" class="form-text text-muted">Please Insert key for fatch Api.</small>
+            <ValidationMessage For="()=>KeyModel.Key"></ValidationMessage>
+        </div>
+        <div class="col-sm-2">
+            <button class="btn btn-success">Fatch Data</button>
+        </div>
+    </div>
+</EditForm>
+
+
+
+@if (ShowDetailData)
+{
+    <div class="card border-primary mb-3" style="max-width: 100%;">
+        <div class="card-header">Article Datail</div>
+        <div class="card-body">
+            <TestWebUi.Pages.Components.ArticleDetail article="singleArticle" ></TestWebUi.Pages.Components.ArticleDetail>
+        </div>
+        <div class="card-footer text-muted">
+            <button class="btn btn-primary" @onclick="BackToList">Back To List</button>
+        </div>
+    </div>
+
+}
+else
+{
+
+    @if (responseDtoData != null && responseDtoData.IsSuccess)
+    {
+        <table class="table table-hover">
+            <thead>
+                <tr class="table-dark">
+                    <th>
+                        Title
+                    </th>
+                    <th>
+                        Publish Date
+                    </th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Articles.Any())
+                {
+
+                    @foreach (ArticleDto item in Articles)
+                    {
+                        <tr class="table-secondary">
+                            <td>@item.Title</td>
+                            <td>@item.PublishedDate?.ToString("dd-MMM-yy HH:mm")</td>
+                            <td><button class="btn btn-primary" @onclick="@(()=> ShowMoreArticleDetail(item.Id))">More Detail</button></td>
+                        </tr>
+                    }
+
+                }
+            </tbody>
+        </table>
+    }
+
+}
+
+@code {
+    public bool IsProcessing { get; set; } = false;
+    public bool ShowDetailData { get; set; } = false;
+    public string DisplayMessage { get; set; } = "";
+
+    public TestWebUi.Pages.Components.ArticleDetail articleDetailctrl { get; set; }  
+
+    public ResponseDto responseDtoData { get; set; }
+    public IEnumerable<ArticleDto> Articles { get; set; }
+    ArticleDto singleArticle { get; set; }
+    private KeyDto KeyModel { get; set; } = new KeyDto();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+    private async Task LoadDataAsync()
+    {
+        DisplayMessage = " Start fatching data from database.";
+        IsProcessing = true;
+        responseDtoData = await homeService.GetAllDataAsync();
+        if (responseDtoData.IsSuccess)
+        {
+            var options = new JsonSerializerOptions
+                {
+                    Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                };
+            Articles = JsonSerializer.Deserialize<IEnumerable<ArticleDto>>(responseDtoData.Result.ToString(), options);
+        }
+        IsProcessing = false;
+    }
+    private async Task SaveInitialData()
+    {
+        DisplayMessage = " Start fatching data from Third Party Api.";
+        IsProcessing = true;
+        try
+        {
+            responseDtoData = await homeService.FatchThirdPartDataAsync(KeyModel.Key);
+            if (responseDtoData.IsSuccess)
+            {
+                //Show Success Alert With Data Inserted
+                await JsRuntime.ToastrSuccess(responseDtoData.Message);
+            }
+            else
+            {
+                await JsRuntime.ToastrError(responseDtoData.Message);
+                //Show Error Alert With Message
+            }
+
+        }
+        catch (Exception e)
+        {
+            await JsRuntime.ToastrError(e.Message);
+        }
+        finally
+        {
+            IsProcessing = false;
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task ShowMoreArticleDetail(int articleId)
+    {
+        singleArticle = Articles.Where(c => c.Id == articleId).FirstOrDefault();
+        @if (singleArticle is not null)
+        {
+            ShowDetailData = true;
+        }
+        else
+        {
+            await JsRuntime.ToastrError("Invalid Article Not Found.");
+        }
+
+    }
+    private void BackToList()
+    {
+
+        ShowDetailData = false;
+
+    }
+    //BackToList
+
+}
